@@ -14,7 +14,6 @@ function FlapUnit({ targetChar, size = 'logo' }) {
   const currentIndexRef = useRef(0)
   const targetIndexRef = useRef(0)
   const timeoutRef = useRef(null)
-  const flippingRef = useRef(false)
 
   const isLogo = size === 'logo'
   const w = isLogo ? '34px' : '22px'
@@ -30,7 +29,7 @@ function FlapUnit({ targetChar, size = 'logo' }) {
 
   function scheduleNext() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    timeoutRef.current = setTimeout(doFlip, 80)
+    timeoutRef.current = setTimeout(doFlip, 50)
   }
 
   function doFlip() {
@@ -39,14 +38,12 @@ function FlapUnit({ targetChar, size = 'logo' }) {
     const nextC = CHARS[next]
     setNextChar(nextC)
     setFlipping(true)
-    flippingRef.current = true
     timeoutRef.current = setTimeout(() => {
       currentIndexRef.current = next
       setCurrentChar(nextC)
       setFlipping(false)
-      flippingRef.current = false
       if (next !== targetIndexRef.current) scheduleNext()
-    }, 160)
+    }, 100)
   }
 
   const card = {
@@ -110,7 +107,7 @@ function FlapUnit({ targetChar, size = 'logo' }) {
     transformOrigin: 'bottom center',
     transformStyle: 'preserve-3d',
     zIndex: 5,
-    animation: flipping ? 'flapDown 0.16s ease-in forwards' : 'none',
+    animation: flipping ? 'flapDown 0.1s ease-in forwards' : 'none',
     borderRadius: '2px 2px 0 0',
   }
 
@@ -166,7 +163,7 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
     const interval = setInterval(() => {
       wordRef.current = (wordRef.current + 1) % words.length
       setChars(padWord(words[wordRef.current]).split(''))
-    }, 6000)
+    }, 10500)
     return () => { clearTimeout(timeout); clearInterval(interval) }
   }, [words])
 
