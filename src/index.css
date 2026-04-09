@@ -1,6 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
   --ink: #0e0e0c;
@@ -24,12 +30,27 @@ body {
   min-height: 100vh;
 }
 
-button { cursor: pointer; }
-a { text-decoration: none; }
+button {
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+}
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-input[type=number] { -moz-appearance: textfield; }
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+@media (max-width: 520px) {
+  main {
+    padding: 1rem;
+    max-width: 100% !important;
+  }
+}

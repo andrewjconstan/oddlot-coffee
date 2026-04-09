@@ -41,7 +41,7 @@ export default function Admin() {
     name: '', origin: '', roast: 'Light', best_for: '', description: '',
     total_cost: '', shipping_cost: '', tax_amount: '', total_oz: '',
     purchase_date: '', purchase_url: '', roaster_name: '', process_method: '',
-    tasting_notes: '', max_spots: 6, display_order: 0, purchased: false, photo_url: '',
+    tasting_notes: '', max_spots: 6, purchased: false, photo_url: '',
   }
 
   useEffect(() => {
@@ -227,16 +227,20 @@ export default function Admin() {
                 <input
                   style={inputStyle}
                   type="date"
-                  value={editingBag.purchase_date ? new Date(editingBag.purchase_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                  value={editingBag.purchase_date
+                    ? (() => { const d = new Date(editingBag.purchase_date); return isNaN(d) ? '' : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}` })()
+                    : new Date().toISOString().split('T')[0]
+                  }
                   onChange={e => {
-                    const d = new Date(e.target.value)
+                    const [year, month, day] = e.target.value.split('-')
+                    const d = new Date(year, month - 1, day)
                     const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     setEditingBag(b => ({ ...b, purchase_date: formatted }))
                   }}
                 />
               </Field>
               <Field label="Max Spots"><input style={inputStyle} type="number" value={editingBag.max_spots} onChange={e => setEditingBag(b => ({ ...b, max_spots: e.target.value }))} /></Field>
-              <Field label="Display Order"><input style={inputStyle} type="number" value={editingBag.display_order} onChange={e => setEditingBag(b => ({ ...b, display_order: e.target.value }))} /></Field>
+              {/* <Field label="Display Order"><input style={inputStyle} type="number" value={editingBag.display_order} onChange={e => setEditingBag(b => ({ ...b, display_order: e.target.value }))} /></Field> */}
               <Field label="Roaster Name"><input style={inputStyle} value={editingBag.roaster_name || ''} onChange={e => setEditingBag(b => ({ ...b, roaster_name: e.target.value }))} /></Field>
               <Field label="Process Method"><input style={inputStyle} value={editingBag.process_method || ''} onChange={e => setEditingBag(b => ({ ...b, process_method: e.target.value }))} /></Field>
               <Field label="Purchase URL"><input style={inputStyle} value={editingBag.purchase_url || ''} onChange={e => setEditingBag(b => ({ ...b, purchase_url: e.target.value }))} /></Field>
