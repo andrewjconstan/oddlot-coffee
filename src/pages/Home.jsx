@@ -78,7 +78,7 @@ export default function Home() {
                 {bags.length === 0 ? (
                   <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.15em', textAlign: 'center', paddingTop: '3rem' }}>no open lots right now. check back soon.</div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5px', background: 'var(--tile-border)', border: '1.5px solid var(--tile-border)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0', background: 'transparent', border: 'none' }}>
   {bags.map(bag => (
     <BagCard key={bag.id} bag={bag} gramsPerDrink={gramsPerDrink} onParticipantsChange={fetchAll} />
   ))}
