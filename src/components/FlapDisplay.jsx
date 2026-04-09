@@ -8,87 +8,140 @@ function getIndex(c) {
 }
 
 function FlapUnit({ targetChar, size = 'logo' }) {
-  const [displayChar, setDisplayChar] = useState(' ')
-  const intervalRef = useRef(null)
+  const [currentChar, setCurrentChar] = useState(' ')
+  const [nextChar, setNextChar] = useState(' ')
+  const [flipping, setFlipping] = useState(false)
   const currentIndexRef = useRef(0)
-
-  useEffect(() => {
-    const target = targetChar.toUpperCase()
-    const targetIndex = getIndex(target)
-
-    if (intervalRef.current) clearInterval(intervalRef.current)
-
-    const tick = () => {
-      currentIndexRef.current = (currentIndexRef.current + 1) % CHARS.length
-      setDisplayChar(CHARS[currentIndexRef.current])
-      if (currentIndexRef.current === targetIndex) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-
-    if (currentIndexRef.current !== targetIndex) {
-      intervalRef.current = setInterval(tick, 80)
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [targetChar])
+  const targetIndexRef = useRef(0)
+  const timeoutRef = useRef(null)
+  const flippingRef = useRef(false)
 
   const isLogo = size === 'logo'
+  const w = isLogo ? '34px' : '22px'
+  const h = isLogo ? '46px' : '30px'
+  const fs = isLogo ? '24px' : '16px'
+  const color = size === 'price' ? 'var(--accent)' : 'var(--flap-text)'
 
-  const unitStyle = {
-    display: 'inline-flex',
-    width: isLogo ? '34px' : '22px',
-    height: isLogo ? '46px' : '30px',
-    background: 'var(--flap-face)',
-    borderRadius: '3px',
-    border: '1px solid #333330',
-    overflow: 'hidden',
-    position: 'relative',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
-    flexShrink: 0,
+  useEffect(() => {
+    targetIndexRef.current = getIndex(targetChar.toUpperCase())
+    scheduleNext()
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
+  }, [targetChar])
+
+  function scheduleNext() {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(doFlip, 80)
   }
 
-  const lineStyle = {
+  function doFlip() {
+    if (currentIndexRef.current === targetIndexRef.current) return
+    const next = (currentIndexRef.current + 1) % CHARS.length
+    const nextC = CHARS[next]
+    setNextChar(nextC)
+    setFlipping(true)
+    flippingRef.current = true
+    timeoutRef.current = setTimeout(() => {
+      currentIndexRef.current = next
+      setCurrentChar(nextC)
+      setFlipping(false)
+      flippingRef.current = false
+      if (next !== targetIndexRef.current) scheduleNext()
+    }, 160)
+  }
+
+  const card = {
+    position: 'relative',
+    width: w, height: h,
+    display: 'inline-flex',
+    flexShrink: 0,
+    perspective: '200px',
+  }
+
+  const half = {
     position: 'absolute',
     left: 0, right: 0,
-    top: '50%',
-    height: '1px',
-    background: '#111110',
-    zIndex: 2,
-    pointerEvents: 'none',
-  }
-
-  const charStyle = {
-    fontFamily: 'var(--font-display)',
-    fontSize: isLogo ? '24px' : '16px',
-    fontWeight: 700,
-    color: size === 'price' ? 'var(--accent)' : 'var(--flap-text)',
     width: '100%',
-    height: '100%',
+    height: '50%',
+    overflow: 'hidden',
+    background: 'var(--flap-face)',
+    border: '1px solid #333330',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
-    transition: 'none',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+  }
+
+  const charEl = (char, clip) => (
+    <div style={{
+      fontFamily: 'var(--font-display)',
+      fontSize: fs,
+      fontWeight: 700,
+      color,
+      position: 'absolute',
+      width: '100%',
+      height: '200%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      top: clip === 'top' ? 0 : '-100%',
+      userSelect: 'none',
+    }}>{char}</div>
+  )
+
+  const dividerStyle = {
+    position: 'absolute',
+    left: 0, right: 0,
+    top: '50%',
+    height: '1.5px',
+    background: '#0a0a08',
+    zIndex: 10,
+    transform: 'translateY(-50%)',
+  }
+
+  const flapStyle = {
+    position: 'absolute',
+    left: 0, right: 0,
+    top: 0,
+    width: '100%',
+    height: '50%',
+    overflow: 'hidden',
+    background: 'var(--flap-face)',
+    border: '1px solid #2a2a28',
+    transformOrigin: 'bottom center',
+    transformStyle: 'preserve-3d',
+    zIndex: 5,
+    animation: flipping ? 'flapDown 0.16s ease-in forwards' : 'none',
+    borderRadius: '2px 2px 0 0',
   }
 
   return (
-    <div style={unitStyle} className="flap-unit">
-      <div style={lineStyle} />
-      <div style={charStyle} className="flap-char">{displayChar}</div>
+    <div style={card}>
       <style>{`
-        .flap-char {
-          animation: flapTick 0.08s ease-in-out;
-        }
-        @keyframes flapTick {
-          0% { transform: rotateX(0deg); opacity: 1; }
-          40% { transform: rotateX(90deg); opacity: 0.3; }
-          100% { transform: rotateX(0deg); opacity: 1; }
+        @keyframes flapDown {
+          0%   { transform: rotateX(0deg); background: var(--flap-face); }
+          49%  { transform: rotateX(-90deg); background: #111110; }
+          50%  { transform: rotateX(-90deg); background: #111110; }
+          100% { transform: rotateX(-180deg); background: #1e1e1c; opacity: 0; }
         }
       `}</style>
+
+      <div style={{ ...half, top: 0, borderRadius: '2px 2px 0 0', borderBottom: 'none' }}>
+        {charEl(currentChar, 'top')}
+      </div>
+
+      <div style={{ ...half, bottom: 0, borderRadius: '0 0 2px 2px', borderTop: 'none' }}>
+        {charEl(nextChar, 'bottom')}
+      </div>
+
+      <div style={{ ...half, bottom: 0, borderRadius: '0 0 2px 2px', borderTop: 'none', zIndex: 2 }}>
+        {charEl(currentChar, 'bottom')}
+      </div>
+
+      <div style={flapStyle}>
+        {charEl(currentChar, 'top')}
+      </div>
+
+      <div style={dividerStyle} />
     </div>
   )
 }
@@ -110,12 +163,10 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
     const timeout = setTimeout(() => {
       setChars(padWord(words[0]).split(''))
     }, 300)
-
     const interval = setInterval(() => {
       wordRef.current = (wordRef.current + 1) % words.length
       setChars(padWord(words[wordRef.current]).split(''))
     }, 6000)
-
     return () => { clearTimeout(timeout); clearInterval(interval) }
   }, [words])
 
