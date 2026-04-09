@@ -1,25 +1,43 @@
 import React, { useEffect, useRef, useState } from 'react'
 
-function FlapUnit({ char, size = 'logo', animDelay = 0 }) {
-  const ref = useRef(null)
-  const prevChar = useRef(char)
+const CHARS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,$@'
+
+function getIndex(c) {
+  const i = CHARS.indexOf(c.toUpperCase())
+  return i === -1 ? 0 : i
+}
+
+function FlapUnit({ targetChar, size = 'logo' }) {
+  const [displayChar, setDisplayChar] = useState(' ')
+  const intervalRef = useRef(null)
+  const currentIndexRef = useRef(0)
 
   useEffect(() => {
-    if (!ref.current || prevChar.current === char) return
-    setTimeout(() => {
-      if (!ref.current) return
-      ref.current.classList.remove('flipping')
-      void ref.current.offsetWidth
-      ref.current.classList.add('flipping')
-      const t = setTimeout(() => {
-        if (ref.current) ref.current.classList.remove('flipping')
-      }, 400)
-      prevChar.current = char
-      return () => clearTimeout(t)
-    }, animDelay)
-  }, [char, animDelay])
+    const target = targetChar.toUpperCase()
+    const targetIndex = getIndex(target)
+
+    if (intervalRef.current) clearInterval(intervalRef.current)
+
+    const tick = () => {
+      currentIndexRef.current = (currentIndexRef.current + 1) % CHARS.length
+      setDisplayChar(CHARS[currentIndexRef.current])
+      if (currentIndexRef.current === targetIndex) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+
+    if (currentIndexRef.current !== targetIndex) {
+      intervalRef.current = setInterval(tick, 80)
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [targetChar])
 
   const isLogo = size === 'logo'
+
   const unitStyle = {
     display: 'inline-flex',
     width: isLogo ? '34px' : '22px',
@@ -32,6 +50,7 @@ function FlapUnit({ char, size = 'logo', animDelay = 0 }) {
     boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
     flexShrink: 0,
   }
+
   const lineStyle = {
     position: 'absolute',
     left: 0, right: 0,
@@ -41,6 +60,7 @@ function FlapUnit({ char, size = 'logo', animDelay = 0 }) {
     zIndex: 2,
     pointerEvents: 'none',
   }
+
   const charStyle = {
     fontFamily: 'var(--font-display)',
     fontSize: isLogo ? '24px' : '16px',
@@ -52,20 +72,21 @@ function FlapUnit({ char, size = 'logo', animDelay = 0 }) {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
+    transition: 'none',
   }
 
   return (
-    <div ref={ref} style={unitStyle} className="flap-unit">
+    <div style={unitStyle} className="flap-unit">
       <div style={lineStyle} />
-      <div style={charStyle}>{char}</div>
+      <div style={charStyle} className="flap-char">{displayChar}</div>
       <style>{`
-        .flap-unit.flipping {
-          animation: flapFlip 0.3s ease-in-out;
+        .flap-char {
+          animation: flapTick 0.08s ease-in-out;
         }
-        @keyframes flapFlip {
-          0% { transform: rotateX(0); }
-          40% { transform: rotateX(90deg); background: #0e0e0c; }
-          100% { transform: rotateX(0); }
+        @keyframes flapTick {
+          0% { transform: rotateX(0deg); opacity: 1; }
+          40% { transform: rotateX(90deg); opacity: 0.3; }
+          100% { transform: rotateX(0deg); opacity: 1; }
         }
       `}</style>
     </div>
@@ -76,7 +97,6 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
   const TOTAL = 12
   const wordRef = useRef(0)
   const [chars, setChars] = useState(Array(TOTAL).fill(' '))
-  const [delays, setDelays] = useState(Array(TOTAL).fill(0))
 
   function padWord(word) {
     const w = word.slice(0, TOTAL)
@@ -86,21 +106,15 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
     return ' '.repeat(left) + w + ' '.repeat(right)
   }
 
-  function randomDelays() {
-    return Array.from({ length: TOTAL }, () => Math.floor(Math.random() * 800))
-  }
-
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setDelays(randomDelays())
       setChars(padWord(words[0]).split(''))
     }, 300)
 
     const interval = setInterval(() => {
       wordRef.current = (wordRef.current + 1) % words.length
-      setDelays(randomDelays())
       setChars(padWord(words[wordRef.current]).split(''))
-    }, 5000)
+    }, 6000)
 
     return () => { clearTimeout(timeout); clearInterval(interval) }
   }, [words])
@@ -108,7 +122,7 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
   return (
     <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
       {chars.map((c, i) => (
-        <FlapUnit key={i} char={c} size="logo" animDelay={delays[i]} />
+        <FlapUnit key={i} targetChar={c} size="logo" />
       ))}
     </div>
   )
@@ -119,7 +133,7 @@ export function PriceFlap({ value }) {
   return (
     <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
       {chars.map((c, i) => (
-        <FlapUnit key={i} char={c} size="price" />
+        <FlapUnit key={i} targetChar={c} size="price" />
       ))}
     </div>
   )
