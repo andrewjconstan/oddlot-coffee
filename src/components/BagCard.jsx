@@ -158,10 +158,11 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
   const drinks = calcDrinks(oz, gramsPerDrink)
 
   return (
-    <div style={{
-      background: 'var(--tile)', display: 'flex', flexDirection: 'column',
-      animation: 'cardReveal 0.5s ease forwards', opacity: 0,
-    }}>
+ <div style={{
+  background: 'var(--tile)', display: 'flex', flexDirection: 'column',
+  animation: 'cardReveal 0.5s ease forwards', opacity: 0,
+  maxWidth: '350px', width: '100%', margin: '0 auto',
+}}>
       <style>{`
         @keyframes cardReveal { to { opacity: 1; transform: translateY(0); } }
         @keyframes burstFloat {
@@ -171,7 +172,7 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
         }
       `}</style>
 
-      <div style={{ position: 'relative', aspectRatio: '4/3', overflow: 'hidden', background: '#0e0e0c' }}>
+      <div style={{ position: 'relative', width: '100%', height: '550px', overflow: 'hidden', background: '#0e0e0c' }}>
         {bag.photo_url
           ? <img src={bag.photo_url} alt={bag.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: 'saturate(0.7) contrast(1.1)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a1a14, #0e0e0a)' }}>
