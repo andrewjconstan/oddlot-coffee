@@ -34,6 +34,7 @@ export default function Admin() {
   const [newWord, setNewWord] = useState('')
   const [editingBag, setEditingBag] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [message, setMessage] = useState('')
 
   const emptyBag = {
@@ -148,6 +149,27 @@ export default function Admin() {
     )
   }
 
+  async function handlePhotoUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    const ext = file.name.split('.').pop()
+    const filename = `${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('bag-photos')
+      .upload(filename, file, { upsert: true })
+    if (error) {
+      alert('upload failed: ' + error.message)
+      setUploadingPhoto(false)
+      return
+    }
+    const { data: urlData } = supabase.storage
+      .from('bag-photos')
+      .getPublicUrl(filename)
+    setEditingBag(b => ({ ...b, photo_url: urlData.publicUrl }))
+    setUploadingPhoto(false)
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface)', padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '1px solid var(--tile-border)', paddingBottom: '1rem' }}>
@@ -188,7 +210,12 @@ export default function Admin() {
               <Field label="Origin"><input style={inputStyle} value={editingBag.origin} onChange={e => setEditingBag(b => ({ ...b, origin: e.target.value }))} /></Field>
               <Field label="Roast">
                 <select style={inputStyle} value={editingBag.roast} onChange={e => setEditingBag(b => ({ ...b, roast: e.target.value }))}>
-                  <option>Light</option><option>Medium</option><option>Dark</option>
+                  <option>Dark</option>
+                  <option>Medium Dark</option>
+                  <option>Medium</option>
+                  <option>Medium Light</option>
+                  <option>Light</option>
+                  <option>Blonde</option>
                 </select>
               </Field>
               <Field label="Best For"><input style={inputStyle} value={editingBag.best_for} onChange={e => setEditingBag(b => ({ ...b, best_for: e.target.value }))} /></Field>
@@ -196,7 +223,18 @@ export default function Admin() {
               <Field label="Shipping Cost ($)"><input style={inputStyle} type="number" value={editingBag.shipping_cost} onChange={e => setEditingBag(b => ({ ...b, shipping_cost: e.target.value }))} /></Field>
               <Field label="Tax ($)"><input style={inputStyle} type="number" value={editingBag.tax_amount} onChange={e => setEditingBag(b => ({ ...b, tax_amount: e.target.value }))} /></Field>
               <Field label="Total Oz"><input style={inputStyle} type="number" value={editingBag.total_oz} onChange={e => setEditingBag(b => ({ ...b, total_oz: e.target.value }))} /></Field>
-              <Field label="Purchase Date"><input style={inputStyle} value={editingBag.purchase_date} placeholder="Apr 19, 2026" onChange={e => setEditingBag(b => ({ ...b, purchase_date: e.target.value }))} /></Field>
+              <Field label="Purchase Date">
+                <input
+                  style={inputStyle}
+                  type="date"
+                  value={editingBag.purchase_date ? new Date(editingBag.purchase_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                  onChange={e => {
+                    const d = new Date(e.target.value)
+                    const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    setEditingBag(b => ({ ...b, purchase_date: formatted }))
+                  }}
+                />
+              </Field>
               <Field label="Max Spots"><input style={inputStyle} type="number" value={editingBag.max_spots} onChange={e => setEditingBag(b => ({ ...b, max_spots: e.target.value }))} /></Field>
               <Field label="Display Order"><input style={inputStyle} type="number" value={editingBag.display_order} onChange={e => setEditingBag(b => ({ ...b, display_order: e.target.value }))} /></Field>
               <Field label="Roaster Name"><input style={inputStyle} value={editingBag.roaster_name || ''} onChange={e => setEditingBag(b => ({ ...b, roaster_name: e.target.value }))} /></Field>
@@ -206,7 +244,36 @@ export default function Admin() {
 
             <Field label="Tasting Notes"><input style={inputStyle} value={editingBag.tasting_notes || ''} onChange={e => setEditingBag(b => ({ ...b, tasting_notes: e.target.value }))} /></Field>
             <Field label="Description"><textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={editingBag.description} onChange={e => setEditingBag(b => ({ ...b, description: e.target.value }))} /></Field>
-            <Field label="Photo URL"><input style={inputStyle} value={editingBag.photo_url || ''} onChange={e => setEditingBag(b => ({ ...b, photo_url: e.target.value }))} /></Field>
+            <Field label="Photo">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {editingBag.photo_url && (
+                  <img src={editingBag.photo_url} alt="bag preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', opacity: 0.85, filter: 'saturate(0.7) contrast(1.1)' }} />
+                )}
+                <label style={{
+                  background: 'transparent', border: '1px solid var(--tile-border)',
+                  color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px',
+                  letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 16px',
+                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                  display: 'block',
+                }}>
+                  {uploadingPhoto ? 'uploading...' : editingBag.photo_url ? 'replace photo' : 'upload photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
+                {editingBag.photo_url && (
+                  <input
+                    style={{ ...inputStyle, fontSize: '10px', color: 'var(--muted)' }}
+                    value={editingBag.photo_url}
+                    onChange={e => setEditingBag(b => ({ ...b, photo_url: e.target.value }))}
+                    placeholder="or paste a URL"
+                  />
+                )}
+              </div>
+            </Field>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button onClick={() => setEditingBag(null)} style={{ ...btnStyle, background: 'transparent', color: 'var(--muted)', borderColor: 'var(--tile-border)' }}>cancel</button>
@@ -230,8 +297,8 @@ export default function Admin() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <input style={{ ...inputStyle, flex: 1 }} value={newWord} onChange={e => setNewWord(e.target.value.toUpperCase().slice(0, 12))} placeholder="NEW WORD (max 12 chars)" maxLength={12} onKeyDown={e => { if (e.key === 'Enter' && newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') }}} />
-          <button onClick={() => { if (newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') }}} style={btnStyle}>add</button>
+          <input style={{ ...inputStyle, flex: 1 }} value={newWord} onChange={e => setNewWord(e.target.value.toUpperCase().slice(0, 12))} placeholder="NEW WORD (max 12 chars)" maxLength={12} onKeyDown={e => { if (e.key === 'Enter' && newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') } }} />
+          <button onClick={() => { if (newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') } }} style={btnStyle}>add</button>
         </div>
         <button onClick={saveLogoWords} style={{ ...btnStyle, marginTop: '1rem' }}>save words</button>
       </section>
