@@ -67,7 +67,7 @@ export default function Home() {
         <button style={tabStyle('history')} onClick={() => setActiveTab('history')}>History</button>
       </nav>
 
-      <main style={{ padding: '2rem', maxWidth: '480px', margin: '0 auto' }}>
+      <main style={{ padding: '2rem', maxWidth: '640px', margin: '0 auto' }}>
         {loading ? (
           <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.2em', textAlign: 'center', paddingTop: '4rem' }}>loading lots...</div>
         ) : (
@@ -102,20 +102,34 @@ export default function Home() {
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5px', background: 'var(--tile-border)', border: '1.5px solid var(--tile-border)' }}>
                     {history.map(h => (
-                      <div key={h.id} style={{ background: 'var(--tile)', padding: '1.25rem', opacity: 0.7 }}>
-                        {h.photo_url && <img src={h.photo_url} alt={h.name} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', marginBottom: '1rem', opacity: 0.7, filter: 'saturate(0.5)' }} />}
-                        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--off-white)', marginBottom: '4px' }}>{h.name}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', marginBottom: '8px' }}>{h.origin}</div>
-                        <div style={{ fontSize: '12px', color: '#888880', lineHeight: 1.5, fontWeight: 300, marginBottom: '10px' }}>{h.description}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {(h.participants || []).map((p, i) => (
-                            <div key={i} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', color: 'var(--muted)', border: '1px solid var(--tile-border)', padding: '2px 8px', letterSpacing: '0.05em' }}>
-                              {typeof p === 'string' ? p : p.name}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+  <div key={h.id} style={{ background: 'var(--tile)', opacity: 0.7 }}>
+    {h.photo_url
+      ? <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', background: '#0e0e0c' }}>
+          <img src={h.photo_url} alt={h.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: 'saturate(0.5) contrast(1.1)' }} />
+        </div>
+      : <div style={{ width: '100%', height: '300px', background: 'linear-gradient(135deg, #1a1a14, #0e0e0a)' }} />
+    }
+    <div style={{ padding: '1.25rem', borderTop: '1px solid var(--tile-border)' }}>
+      <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--off-white)', marginBottom: '4px' }}>
+        {h.name}{h.roaster_name ? ` by ${h.roaster_name}` : ''}
+      </div>
+      <div style={{ fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', marginBottom: '4px' }}>{h.origin}</div>
+      {h.purchased_at && (
+        <div style={{ fontSize: '10px', color: 'var(--muted)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          purchased {new Date(h.purchased_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </div>
+      )}
+      <div style={{ fontSize: '12px', color: '#888880', lineHeight: 1.6, fontWeight: 300, marginBottom: '10px' }}>{h.description}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+        {(h.participants || []).map((p, i) => (
+          <div key={i} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', color: 'var(--muted)', border: '1px solid var(--tile-border)', padding: '2px 8px', letterSpacing: '0.05em' }}>
+            {typeof p === 'string' ? p : p.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+))}
                   </div>
                 )}
               </>

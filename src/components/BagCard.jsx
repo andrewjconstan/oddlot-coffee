@@ -198,7 +198,9 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
 
       <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--tile-border)' }}>
         <div>
-          <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--off-white)', letterSpacing: '0.05em', lineHeight: 1.3 }}>{bag.name}</div>
+          <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--off-white)', letterSpacing: '0.05em', lineHeight: 1.3 }}>
+  {bag.name}{bag.roaster_name ? <span style={{ color: 'var(--muted)', fontWeight: 300 }}> by {bag.roaster_name}</span> : ''}
+</div>
           <div style={{ fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-display)' }}>{bag.origin}</div>
         </div>
         <div style={{ fontSize: '12px', color: '#aaa89e', lineHeight: 1.6, fontWeight: 300 }}>{bag.description}</div>
