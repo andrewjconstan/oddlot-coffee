@@ -67,7 +67,7 @@ export default function Home() {
         <button style={tabStyle('history')} onClick={() => setActiveTab('history')}>History</button>
       </nav>
 
-      <main style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto' }}>
+      <main style={{ padding: '2rem', maxWidth: '480px', margin: '0 auto' }}>
         {loading ? (
           <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.2em', textAlign: 'center', paddingTop: '4rem' }}>loading lots...</div>
         ) : (
@@ -79,9 +79,10 @@ export default function Home() {
                   <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.15em', textAlign: 'center', paddingTop: '3rem' }}>no open lots right now. check back soon.</div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5px', background: 'var(--tile-border)', border: '1.5px solid var(--tile-border)' }}>
-                    <BagCard key={bag.id} bag={bag} gramsPerDrink={gramsPerDrink} onParticipantsChange={fetchAll} />
-                    ))}
-                  </div>
+  {bags.map(bag => (
+    <BagCard key={bag.id} bag={bag} gramsPerDrink={gramsPerDrink} onParticipantsChange={fetchAll} />
+  ))}
+</div>
                 )}
                 <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
                   <a href={`mailto:${recommendEmail}?subject=Bag%20Recommendation%20for%20Odd%20Lot&body=Hey%2C%20I%20have%20a%20coffee%20bag%20recommendation%3A%0A%0A`}
