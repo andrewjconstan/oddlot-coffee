@@ -40,7 +40,7 @@ export default function Admin() {
   const [message, setMessage] = useState('')
 
   const emptyBag = {
-    name: '', origin: '', roast: 'Light', best_for: '', description: '',
+    name: '', origin: '', roast: '', best_for: '', description: '',
     total_cost: '', shipping_cost: '', tax_amount: '', total_oz: '',
     purchase_date: '', purchase_url: '', roaster_name: '', process_method: '',
     tasting_notes: '', max_spots: 6, purchased: false, photo_url: '',
@@ -216,13 +216,14 @@ export default function Admin() {
               <Field label="Origin"><input style={inputStyle} value={editingBag.origin} onChange={e => setEditingBag(b => ({ ...b, origin: e.target.value }))} /></Field>
               <Field label="Roast">
                 <select style={inputStyle} value={editingBag.roast} onChange={e => setEditingBag(b => ({ ...b, roast: e.target.value }))}>
-                  <option>Dark</option>
-                  <option>Medium Dark</option>
-                  <option>Medium</option>
-                  <option>Medium Light</option>
-                  <option>Light</option>
-                  <option>Blonde</option>
-                </select>
+  <option value="">— not specified —</option>
+  <option>Dark</option>
+  <option>Medium Dark</option>
+  <option>Medium</option>
+  <option>Medium Light</option>
+  <option>Light</option>
+  <option>Blonde</option>
+</select>
               </Field>
               <Field label="Best For"><input style={inputStyle} value={editingBag.best_for} onChange={e => setEditingBag(b => ({ ...b, best_for: e.target.value }))} /></Field>
               <Field label="Total Cost ($)"><input style={inputStyle} type="number" value={editingBag.total_cost} onChange={e => setEditingBag(b => ({ ...b, total_cost: e.target.value }))} /></Field>

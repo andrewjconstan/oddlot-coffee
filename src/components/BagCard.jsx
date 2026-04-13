@@ -23,16 +23,6 @@ function calcDrinks(oz, gramsPerDrink) {
   return Math.round((oz * GRAMS_PER_OZ) / gramsPerDrink)
 }
 
-function calcCountdown(dateStr) {
-  if (!dateStr) return null
-  const target = new Date(dateStr)
-  const now = new Date()
-  const diffMs = target - now
-  if (diffMs <= 0) return null
-  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-  return { days }
-}
-
 function Tooltip({ children, content }) {
   const [open, setOpen] = useState(false)
   return (
@@ -70,6 +60,7 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
   const [error, setError] = useState('')
   const [animPrice, setAnimPrice] = useState(null)
   const [priceAnimate, setPriceAnimate] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const isFirstRender = useRef(true)
   const inputRef = useRef(null)
   const cookieKey = `oddlot_${bag.id}`
@@ -85,6 +76,10 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
   const spotsLeft = (bag.max_spots || 6) - participants.length
   const isFull = spotsLeft <= 0
   const myNames = getMyNames()
+
+  const targetOz = bag.max_spots > 0 ? (bag.total_oz || 0) / bag.max_spots : 0
+  const total = (bag.total_cost || 0) + (bag.shipping_cost || 0) + (bag.tax_amount || 0)
+  const targetPrice = bag.max_spots > 0 ? total / bag.max_spots : 0
 
   useEffect(() => {
     setAnimPrice(price)
@@ -106,15 +101,12 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
       setError('that name is already in this lot'); return
     }
     if (isFull) { setError('this lot is full'); return }
-
     const { data, error: err } = await supabase
       .from('participants')
       .insert({ bag_id: bag.id, name, cookie_id: cookieKey })
       .select()
       .single()
-
     if (err) { setError('something went wrong, try again'); return }
-
     const updated = [...participants, data]
     setParticipants(updated)
     setMyNames([...myNames, name])
@@ -125,14 +117,14 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
     onParticipantsChange?.()
   }
 
-async function handleRemove(name) {
-  if (!myNames.includes(name)) return
-  await supabase.from('participants').delete().eq('bag_id', bag.id).eq('name', name)
-  const updated = participants.filter(p => p.name !== name)
-  setParticipants(updated)
-  setMyNames(myNames.filter(n => n !== name))
-  spawnPoopBurst()
-}
+  async function handleRemove(name) {
+    if (!myNames.includes(name)) return
+    await supabase.from('participants').delete().eq('bag_id', bag.id).eq('name', name)
+    const updated = participants.filter(p => p.name !== name)
+    setParticipants(updated)
+    setMyNames(myNames.filter(n => n !== name))
+    spawnPoopBurst()
+  }
 
   function spawnBurst() {
     for (let i = 0; i < 20; i++) {
@@ -151,27 +143,25 @@ async function handleRemove(name) {
   }
 
   function spawnPoopBurst() {
-  for (let i = 0; i < 20; i++) {
-    setTimeout(() => {
-      const el = document.createElement('div')
-      el.textContent = '💩'
-      el.style.cssText = `position:fixed;pointer-events:none;z-index:9999;font-size:20px;
-        left:${50 + (Math.random() - 0.5) * 40}%;
-        top:${50 + (Math.random() - 0.5) * 20}%;
-        animation:burstFloat 1.8s ease forwards;
-        animation-delay:${Math.random() * 0.4}s`
-      document.body.appendChild(el)
-      setTimeout(() => el.remove(), 2200)
-    }, i * 40)
+    for (let i = 0; i < 20; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div')
+        el.textContent = '💩'
+        el.style.cssText = `position:fixed;pointer-events:none;z-index:9999;font-size:20px;
+          left:${50 + (Math.random() - 0.5) * 40}%;
+          top:${50 + (Math.random() - 0.5) * 20}%;
+          animation:burstFloat 1.8s ease forwards;
+          animation-delay:${Math.random() * 0.4}s`
+        document.body.appendChild(el)
+        setTimeout(() => el.remove(), 2200)
+      }, i * 40)
+    }
   }
-}
-
-  const cd = calcCountdown(bag.purchase_date)
-  const countdownText = cd
-    ? `${cd.days} day${cd.days === 1 ? '' : 's'} away`
-    : 'already purchased'
 
   const drinks = calcDrinks(oz, gramsPerDrink)
+
+  const hasDetails = bag.process_method || bag.tasting_notes || bag.roaster_name ||
+    bag.shipping_cost > 0 || bag.tax_amount > 0 || bag.purchase_url
 
   return (
     <div style={{
@@ -187,9 +177,14 @@ async function handleRemove(name) {
           100% { transform: translateY(-120px) scale(0.6); opacity: 0; }
         }
         @keyframes tagPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+        @keyframes detailsExpand {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
 
-      <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', background: '#0e0e0c' }}>
+      {/* Image — square */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', background: '#0e0e0c' }}>
         {bag.photo_url
           ? <img src={bag.photo_url} alt={bag.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: 'saturate(0.7) contrast(1.1)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a1a14, #0e0e0a)' }}>
@@ -201,9 +196,11 @@ async function handleRemove(name) {
               </svg>
             </div>
         }
-        <div style={{ position: 'absolute', top: 12, left: 12, background: 'var(--ink)', border: '1px solid var(--tile-border)', fontFamily: 'var(--font-display)', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', padding: '4px 8px' }}>
-          {bag.roast}
-        </div>
+        {bag.roast && (
+          <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(14,14,12,0.85)', border: '1px solid var(--tile-border)', fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', padding: '4px 10px' }}>
+            {bag.roast}
+          </div>
+        )}
         {bag.purchased && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', zIndex: 3 }}>
             <div style={{ border: '3px solid var(--accent)', color: 'var(--accent)', fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, letterSpacing: '0.2em', padding: '8px 16px', transform: 'rotate(-12deg)', opacity: 0.9, textTransform: 'uppercase' }}>
@@ -214,28 +211,44 @@ async function handleRemove(name) {
       </div>
 
       <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--tile-border)' }}>
+
+        {/* Name + origin */}
         <div>
           <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--off-white)', letterSpacing: '0.05em', lineHeight: 1.3 }}>
             {bag.name}{bag.roaster_name ? <span style={{ color: 'var(--muted)', fontWeight: 300 }}> by {bag.roaster_name}</span> : ''}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-display)' }}>{bag.origin}</div>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', marginTop: '2px' }}>{bag.origin}</div>
         </div>
+
         <div style={{ fontSize: '13px', color: '#aaa89e', lineHeight: 1.6, fontWeight: 300 }}>{bag.description}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: 'auto' }}>
+
+          {/* Best for */}
           <div style={{ background: 'var(--flap-bg)', padding: '8px 10px', border: '1px solid var(--tile-border)' }}>
             <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '3px', fontFamily: 'var(--font-display)' }}>Best For</div>
             <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--off-white)' }}>{bag.best_for}</div>
           </div>
+
+          {/* Lot closes at */}
           <div style={{ background: 'var(--flap-bg)', padding: '8px 10px', border: '1px solid var(--tile-border)' }}>
-            <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '3px', fontFamily: 'var(--font-display)' }}>Purchase</div>
+            <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '3px', fontFamily: 'var(--font-display)' }}>Lot Closes At</div>
             <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--off-white)' }}>
-              <Tooltip content={<>{countdownText}<br /><span style={{ color: 'var(--muted)', fontSize: '10px' }}>until purchase</span></>}>
-                <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px', textDecorationColor: 'var(--muted)' }}>{bag.purchase_date}</span>
+              <Tooltip content={
+                <>
+                  <span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: 700 }}>{fmtOz(targetOz)} oz @ ${targetPrice.toFixed(2)}</span>
+                  <br />
+                  <span style={{ color: 'var(--muted)', fontSize: '10px' }}>per person at {bag.max_spots} people</span>
+                </>
+              }>
+                <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px', textDecorationColor: 'var(--muted)' }}>
+                  {bag.max_spots} people
+                </span>
               </Tooltip>
             </div>
           </div>
 
+          {/* Per person price + oz */}
           <div style={{ background: 'var(--flap-bg)', padding: '10px 12px', border: '1px solid var(--tile-border)', gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>Per Person</div>
@@ -251,7 +264,13 @@ async function handleRemove(name) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
               {animPrice !== null && <PriceFlap value={animPrice} animate={priceAnimate} />}
               <div style={{ width: '1px', height: '24px', background: 'var(--tile-border)' }} />
-              <Tooltip content={<><span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: 700 }}>~{drinks} drink{drinks === 1 ? '' : 's'}</span><br /><span style={{ color: 'var(--muted)', fontSize: '10px' }}>at {gramsPerDrink}g per brew</span></>}>
+              <Tooltip content={
+                <>
+                  <span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: 700 }}>~{drinks} drink{drinks === 1 ? '' : 's'}</span>
+                  <br />
+                  <span style={{ color: 'var(--muted)', fontSize: '10px' }}>at {gramsPerDrink}g per brew</span>
+                </>
+              }>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                   @ <span style={{ color: 'var(--off-white)', fontSize: '13px', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px', textDecorationColor: 'var(--muted)' }}>{fmtOz(oz)}</span> oz
                 </span>
@@ -260,6 +279,42 @@ async function handleRemove(name) {
           </div>
         </div>
 
+        {/* Details expand */}
+        {hasDetails && (
+          <div>
+            <button
+              onClick={() => setDetailsOpen(o => !o)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span style={{ display: 'inline-block', transform: detailsOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
+              {detailsOpen ? 'less details' : 'all the details'}
+            </button>
+            {detailsOpen && (
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', animation: 'detailsExpand 0.2s ease' }}>
+                {bag.roaster_name && <DetailRow label="Roaster" value={bag.roaster_name} />}
+                {bag.process_method && <DetailRow label="Process" value={bag.process_method} />}
+                {bag.tasting_notes && <DetailRow label="Tasting Notes" value={bag.tasting_notes} />}
+                {bag.total_oz && <DetailRow label="Total Bag Size" value={`${bag.total_oz} oz`} />}
+                <DetailRow label="Bag Cost" value={`$${(bag.total_cost || 0).toFixed(2)}`} />
+                {bag.shipping_cost > 0 && <DetailRow label="Shipping" value={`$${bag.shipping_cost.toFixed(2)}`} />}
+                {bag.tax_amount > 0 && <DetailRow label="Tax" value={`$${bag.tax_amount.toFixed(2)}`} />}
+                {(bag.shipping_cost > 0 || bag.tax_amount > 0) && (
+                  <DetailRow label="Total" value={`$${((bag.total_cost || 0) + (bag.shipping_cost || 0) + (bag.tax_amount || 0)).toFixed(2)}`} accent />
+                )}
+                {bag.purchase_url && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--tile-border)', marginTop: '2px' }}>
+                    <span style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>Source</span>
+                    <a href={bag.purchase_url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--accent)', fontFamily: 'var(--font-display)', letterSpacing: '0.05em', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                      view listing →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Names */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '28px' }}>
           {participants.map(p => (
             <div key={p.id} style={{ background: 'var(--flap-bg)', border: '1px solid var(--tile-border)', fontSize: '12px', color: 'var(--off-white)', padding: '4px 10px', fontFamily: 'var(--font-display)', letterSpacing: '0.05em', animation: 'tagPop 0.2s ease' }}>
@@ -271,6 +326,7 @@ async function handleRemove(name) {
           ))}
         </div>
 
+        {/* Join */}
         <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--tile-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {inputVisible && (
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -299,6 +355,15 @@ async function handleRemove(name) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DetailRow({ label, value, accent = false }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid var(--tile-border)' }}>
+      <span style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--muted)', fontFamily: 'var(--font-display)', flexShrink: 0, marginRight: '12px' }}>{label}</span>
+      <span style={{ fontSize: '12px', color: accent ? 'var(--accent)' : 'var(--off-white)', fontFamily: 'var(--font-display)', letterSpacing: '0.05em', textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
