@@ -38,6 +38,7 @@ export default function Admin() {
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [message, setMessage] = useState('')
+  const [history, setHistory] = useState([])
 
   const emptyBag = {
     name: '', origin: '', roast: '', best_for: '', description: '',
@@ -57,11 +58,13 @@ export default function Admin() {
   }, [managingBag])
 
   async function fetchAll() {
-    const [bagsRes, configRes] = await Promise.all([
+    const [bagsRes, configRes, historyRes] = await Promise.all([
       supabase.from('bags').select('*').order('created_at'),
       supabase.from('config').select('*'),
+      supabase.from('history').select('*').order('purchased_at', { ascending: false }),
     ])
     if (bagsRes.data) setBags(bagsRes.data)
+    if (historyRes.data) setHistory(historyRes.data)
     if (configRes.data) {
       const cfg = {}
       configRes.data.forEach(row => { cfg[row.key] = row.value })
@@ -160,6 +163,14 @@ export default function Admin() {
     setUploadingPhoto(false)
   }
 
+  async function deleteHistory(id) {
+    if (!confirm('remove this from history?')) return
+    await supabase.from('history').delete().eq('id', id)
+    setHistory(h => h.filter(x => x.id !== id))
+    setMessage('history entry removed.')
+    setTimeout(() => setMessage(''), 2000)
+  }
+
   if (!authed) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -216,14 +227,14 @@ export default function Admin() {
               <Field label="Origin"><input style={inputStyle} value={editingBag.origin} onChange={e => setEditingBag(b => ({ ...b, origin: e.target.value }))} /></Field>
               <Field label="Roast">
                 <select style={inputStyle} value={editingBag.roast} onChange={e => setEditingBag(b => ({ ...b, roast: e.target.value }))}>
-  <option value="">— not specified —</option>
-  <option>Dark</option>
-  <option>Medium Dark</option>
-  <option>Medium</option>
-  <option>Medium Light</option>
-  <option>Light</option>
-  <option>Blonde</option>
-</select>
+                  <option value="">— not specified —</option>
+                  <option>Dark</option>
+                  <option>Medium Dark</option>
+                  <option>Medium</option>
+                  <option>Medium Light</option>
+                  <option>Light</option>
+                  <option>Blonde</option>
+                </select>
               </Field>
               <Field label="Best For"><input style={inputStyle} value={editingBag.best_for} onChange={e => setEditingBag(b => ({ ...b, best_for: e.target.value }))} /></Field>
               <Field label="Total Cost ($)"><input style={inputStyle} type="number" value={editingBag.total_cost} onChange={e => setEditingBag(b => ({ ...b, total_cost: e.target.value }))} /></Field>
@@ -235,12 +246,12 @@ export default function Admin() {
                   style={inputStyle}
                   type="date"
                   value={editingBag.purchase_date
-                    ? (() => { const d = new Date(editingBag.purchase_date); return isNaN(d) ? '' : `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}` })()
+                    ? (() => { const d = new Date(editingBag.purchase_date); return isNaN(d) ? '' : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}` })()
                     : new Date().toISOString().split('T')[0]
                   }
                   onChange={e => {
                     const [year, month, day] = e.target.value.split('-')
-                    const d = new Date(parseInt(year), parseInt(month)-1, parseInt(day))
+                    const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
                     const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     setEditingBag(b => ({ ...b, purchase_date: formatted }))
                   }}
@@ -309,7 +320,7 @@ export default function Admin() {
                   onClick={() => {
                     if (i <= 1) return
                     const w = [...logoWords]
-                    ;[w[i-1], w[i]] = [w[i], w[i-1]]
+                      ;[w[i - 1], w[i]] = [w[i], w[i - 1]]
                     setLogoWords(w)
                   }}
                   disabled={i <= 1}
@@ -319,7 +330,7 @@ export default function Admin() {
                   onClick={() => {
                     if (i === 0 || i === logoWords.length - 1) return
                     const w = [...logoWords]
-                    ;[w[i+1], w[i]] = [w[i], w[i+1]]
+                      ;[w[i + 1], w[i]] = [w[i], w[i + 1]]
                     setLogoWords(w)
                   }}
                   disabled={i === 0 || i === logoWords.length - 1}
@@ -336,10 +347,29 @@ export default function Admin() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <input style={{ ...inputStyle, flex: 1 }} value={newWord} onChange={e => setNewWord(e.target.value.toUpperCase().slice(0, 12))} placeholder="NEW WORD (max 12 chars)" maxLength={12} onKeyDown={e => { if (e.key === 'Enter' && newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') }}} />
-          <button onClick={() => { if (newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') }}} style={btnStyle}>add</button>
+          <input style={{ ...inputStyle, flex: 1 }} value={newWord} onChange={e => setNewWord(e.target.value.toUpperCase().slice(0, 12))} placeholder="NEW WORD (max 12 chars)" maxLength={12} onKeyDown={e => { if (e.key === 'Enter' && newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') } }} />
+          <button onClick={() => { if (newWord.trim()) { setLogoWords(w => [...w, newWord.trim()]); setNewWord('') } }} style={btnStyle}>add</button>
         </div>
         <button onClick={saveLogoWords} style={{ ...btnStyle, marginTop: '1rem' }}>save words</button>
+      </section>
+
+      <section style={{ marginBottom: '3rem' }}>
+        <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--muted)', fontFamily: 'var(--font-display)', marginBottom: '1rem' }}>— history —</div>
+        {history.length === 0 ? (
+          <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.1em' }}>no history yet.</div>
+        ) : (
+          history.map(h => (
+            <div key={h.id} style={{ background: 'var(--tile)', border: '1px solid var(--tile-border)', padding: '1rem', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--muted)' }}>{h.name}</div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>
+                  {h.origin} · {h.participant_count} people · {new Date(h.purchased_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+              <button onClick={() => deleteHistory(h.id)} style={{ ...btnStyle, background: 'transparent', color: '#e05050', borderColor: '#e05050', flexShrink: 0 }}>delete</button>
+            </div>
+          ))
+        )}
       </section>
 
       <section style={{ marginBottom: '3rem' }}>
