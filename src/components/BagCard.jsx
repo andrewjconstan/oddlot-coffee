@@ -29,10 +29,8 @@ function calcCountdown(dateStr) {
   const now = new Date()
   const diffMs = target - now
   if (diffMs <= 0) return null
-  const totalHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const days = Math.floor(totalHours / 24)
-  const hours = totalHours % 24
-  return { days, hours }
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  return { days }
 }
 
 function Tooltip({ children, content }) {
@@ -71,6 +69,8 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
   const [nameInput, setNameInput] = useState('')
   const [error, setError] = useState('')
   const [animPrice, setAnimPrice] = useState(null)
+  const [priceAnimate, setPriceAnimate] = useState(false)
+  const isFirstRender = useRef(true)
   const inputRef = useRef(null)
   const cookieKey = `oddlot_${bag.id}`
 
@@ -87,16 +87,15 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
   const myNames = getMyNames()
 
   useEffect(() => {
-    setAnimPrice(price * 1.8)
-    const steps = 12
-    for (let i = 0; i <= steps; i++) {
-      setTimeout(() => {
-        setAnimPrice(price * 1.8 - (price * 1.8 - price) * (i / steps))
-      }, 400 + i * 80)
-    }
+    setAnimPrice(price)
   }, [])
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    setPriceAnimate(true)
     setAnimPrice(price)
   }, [participants])
 
@@ -126,13 +125,14 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
     onParticipantsChange?.()
   }
 
-  async function handleRemove(name) {
-    if (!myNames.includes(name)) return
-    await supabase.from('participants').delete().eq('bag_id', bag.id).eq('name', name)
-    const updated = participants.filter(p => p.name !== name)
-    setParticipants(updated)
-    setMyNames(myNames.filter(n => n !== name))
-  }
+async function handleRemove(name) {
+  if (!myNames.includes(name)) return
+  await supabase.from('participants').delete().eq('bag_id', bag.id).eq('name', name)
+  const updated = participants.filter(p => p.name !== name)
+  setParticipants(updated)
+  setMyNames(myNames.filter(n => n !== name))
+  spawnPoopBurst()
+}
 
   function spawnBurst() {
     for (let i = 0; i < 20; i++) {
@@ -150,19 +150,35 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
     }
   }
 
+  function spawnPoopBurst() {
+  for (let i = 0; i < 20; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div')
+      el.textContent = '💩'
+      el.style.cssText = `position:fixed;pointer-events:none;z-index:9999;font-size:20px;
+        left:${50 + (Math.random() - 0.5) * 40}%;
+        top:${50 + (Math.random() - 0.5) * 20}%;
+        animation:burstFloat 1.8s ease forwards;
+        animation-delay:${Math.random() * 0.4}s`
+      document.body.appendChild(el)
+      setTimeout(() => el.remove(), 2200)
+    }, i * 40)
+  }
+}
+
   const cd = calcCountdown(bag.purchase_date)
   const countdownText = cd
-    ? `${cd.days > 0 ? cd.days + 'd ' : ''}${cd.hours}h away`
+    ? `${cd.days} day${cd.days === 1 ? '' : 's'} away`
     : 'already purchased'
 
   const drinks = calcDrinks(oz, gramsPerDrink)
 
   return (
- <div style={{
-  background: 'var(--tile)', display: 'flex', flexDirection: 'column',
-  animation: 'cardReveal 0.5s ease forwards', opacity: 0,
-  maxWidth: '350px', width: '100%', margin: '0 auto',
-}}>
+    <div style={{
+      background: 'var(--tile)', display: 'flex', flexDirection: 'column',
+      animation: 'cardReveal 0.5s ease forwards', opacity: 0,
+      maxWidth: '100%', width: '100%',
+    }}>
       <style>{`
         @keyframes cardReveal { to { opacity: 1; transform: translateY(0); } }
         @keyframes burstFloat {
@@ -170,9 +186,10 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
           30% { transform: translateY(-40px) scale(1.2); opacity: 1; }
           100% { transform: translateY(-120px) scale(0.6); opacity: 0; }
         }
+        @keyframes tagPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
       `}</style>
 
-      <div style={{ position: 'relative', width: '100%', height: '550px', overflow: 'hidden', background: '#0e0e0c' }}>
+      <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', background: '#0e0e0c' }}>
         {bag.photo_url
           ? <img src={bag.photo_url} alt={bag.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: 'saturate(0.7) contrast(1.1)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a1a14, #0e0e0a)' }}>
@@ -199,20 +216,20 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
       <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--tile-border)' }}>
         <div>
           <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--off-white)', letterSpacing: '0.05em', lineHeight: 1.3 }}>
-  {bag.name}{bag.roaster_name ? <span style={{ color: 'var(--muted)', fontWeight: 300 }}> by {bag.roaster_name}</span> : ''}
-</div>
+            {bag.name}{bag.roaster_name ? <span style={{ color: 'var(--muted)', fontWeight: 300 }}> by {bag.roaster_name}</span> : ''}
+          </div>
           <div style={{ fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-display)' }}>{bag.origin}</div>
         </div>
-        <div style={{ fontSize: '12px', color: '#aaa89e', lineHeight: 1.6, fontWeight: 300 }}>{bag.description}</div>
+        <div style={{ fontSize: '13px', color: '#aaa89e', lineHeight: 1.6, fontWeight: 300 }}>{bag.description}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: 'auto' }}>
           <div style={{ background: 'var(--flap-bg)', padding: '8px 10px', border: '1px solid var(--tile-border)' }}>
             <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '3px', fontFamily: 'var(--font-display)' }}>Best For</div>
-            <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--off-white)' }}>{bag.best_for}</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--off-white)' }}>{bag.best_for}</div>
           </div>
           <div style={{ background: 'var(--flap-bg)', padding: '8px 10px', border: '1px solid var(--tile-border)' }}>
             <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '3px', fontFamily: 'var(--font-display)' }}>Purchase</div>
-            <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--off-white)' }}>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--off-white)' }}>
               <Tooltip content={<>{countdownText}<br /><span style={{ color: 'var(--muted)', fontSize: '10px' }}>until purchase</span></>}>
                 <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px', textDecorationColor: 'var(--muted)' }}>{bag.purchase_date}</span>
               </Tooltip>
@@ -228,14 +245,14 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
                     <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: i < participants.length ? 'var(--accent)' : 'transparent', border: i < participants.length ? 'none' : '1px solid var(--muted)', transition: 'background 0.3s' }} />
                   ))}
                 </div>
-                <span style={{ fontSize: '10px', color: 'var(--muted)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>{spotsLeft > 0 ? `${spotsLeft} left` : 'full'}</span>
+                <span style={{ fontSize: '11px', color: 'var(--muted)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>{spotsLeft > 0 ? `${spotsLeft} left` : 'full'}</span>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-              {animPrice !== null && <PriceFlap value={animPrice} />}
+              {animPrice !== null && <PriceFlap value={animPrice} animate={priceAnimate} />}
               <div style={{ width: '1px', height: '24px', background: 'var(--tile-border)' }} />
               <Tooltip content={<><span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: 700 }}>~{drinks} drink{drinks === 1 ? '' : 's'}</span><br /><span style={{ color: 'var(--muted)', fontSize: '10px' }}>at {gramsPerDrink}g per brew</span></>}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                   @ <span style={{ color: 'var(--off-white)', fontSize: '13px', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px', textDecorationColor: 'var(--muted)' }}>{fmtOz(oz)}</span> oz
                 </span>
               </Tooltip>
@@ -245,7 +262,7 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '28px' }}>
           {participants.map(p => (
-            <div key={p.id} style={{ background: 'var(--flap-bg)', border: '1px solid var(--tile-border)', fontSize: '11px', color: 'var(--off-white)', padding: '4px 10px', fontFamily: 'var(--font-display)', letterSpacing: '0.05em', animation: 'tagPop 0.2s ease' }}>
+            <div key={p.id} style={{ background: 'var(--flap-bg)', border: '1px solid var(--tile-border)', fontSize: '12px', color: 'var(--off-white)', padding: '4px 10px', fontFamily: 'var(--font-display)', letterSpacing: '0.05em', animation: 'tagPop 0.2s ease' }}>
               {p.name}
               {myNames.includes(p.name) && (
                 <span onClick={() => handleRemove(p.name)} style={{ color: 'var(--accent)', cursor: 'pointer', fontSize: '10px', marginLeft: '6px' }}>✕</span>
@@ -266,15 +283,15 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
                 maxLength={24}
                 style={{ flex: 1, background: 'var(--flap-bg)', border: '1px solid var(--tile-border)', color: 'var(--off-white)', fontFamily: 'var(--font-display)', fontSize: '13px', padding: '8px 10px', outline: 'none', letterSpacing: '0.05em' }}
               />
-              <button onClick={handleJoin} style={{ background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.15em', padding: '10px 16px' }}>+</button>
-              <button onClick={() => { setInputVisible(false); setError(''); setNameInput('') }} style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid var(--tile-border)', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.15em', padding: '10px 16px' }}>✕</button>
+              <button onClick={handleJoin} style={{ background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.15em', padding: '10px 16px', cursor: 'pointer' }}>+</button>
+              <button onClick={() => { setInputVisible(false); setError(''); setNameInput('') }} style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid var(--tile-border)', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.15em', padding: '10px 16px', cursor: 'pointer' }}>✕</button>
             </div>
           )}
-          {error && <div style={{ fontSize: '11px', color: '#e05050', fontFamily: 'var(--font-display)', letterSpacing: '0.05em' }}>{error}</div>}
+          {error && <div style={{ fontSize: '12px', color: '#e05050', fontFamily: 'var(--font-display)', letterSpacing: '0.05em' }}>{error}</div>}
           <button
             onClick={() => { setInputVisible(true); setTimeout(() => inputRef.current?.focus(), 50) }}
             disabled={bag.purchased || isFull}
-            style={{ background: 'transparent', border: '1px solid var(--accent)', color: bag.purchased || isFull ? 'var(--muted)' : '#a04818', fontFamily: 'var(--font-display)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 16px', width: '100%', transition: 'all 0.2s', opacity: bag.purchased || isFull ? 0.35 : 1 }}
+            style={{ background: 'transparent', border: '1px solid var(--accent)', color: bag.purchased || isFull ? 'var(--muted)' : '#a04818', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 16px', width: '100%', transition: 'all 0.2s', opacity: bag.purchased || isFull ? 0.35 : 1, cursor: bag.purchased || isFull ? 'not-allowed' : 'pointer' }}
             onMouseEnter={e => { if (!bag.purchased && !isFull) { e.target.style.background = 'var(--accent)'; e.target.style.color = '#fff' }}}
             onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = bag.purchased || isFull ? 'var(--muted)' : '#a04818' }}
           >
@@ -282,7 +299,6 @@ export default function BagCard({ bag, gramsPerDrink = 20, onParticipantsChange 
           </button>
         </div>
       </div>
-      <style>{`@keyframes tagPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }`}</style>
     </div>
   )
 }

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 const CHARS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,$@'
+const PRICE_CHARS = ' 0123456789.'
 
-function getIndex(c) {
-  const i = CHARS.indexOf(c.toUpperCase())
+function getIndex(chars, c) {
+  const i = chars.indexOf(c.toUpperCase())
   return i === -1 ? 0 : i
 }
 
-function FlapUnit({ targetChar, size = 'logo' }) {
+function FlapUnit({ targetChar, size = 'logo', charSet = CHARS.split(''), animate = true }) {
   const [currentChar, setCurrentChar] = useState(' ')
   const [nextChar, setNextChar] = useState(' ')
   const [flipping, setFlipping] = useState(false)
@@ -22,10 +23,19 @@ function FlapUnit({ targetChar, size = 'logo' }) {
   const color = size === 'price' ? 'var(--accent)' : 'var(--flap-text)'
 
   useEffect(() => {
-    targetIndexRef.current = getIndex(targetChar.toUpperCase())
+    if (!animate && size === 'price') {
+      const idx = charSet.indexOf(targetChar.toUpperCase()) === -1 ? 0 : charSet.indexOf(targetChar.toUpperCase())
+      setCurrentChar(targetChar)
+      setNextChar(targetChar)
+      currentIndexRef.current = idx
+      targetIndexRef.current = idx
+      return
+    }
+    const target = targetChar.toUpperCase()
+    targetIndexRef.current = getIndex(charSet, target)
     scheduleNext()
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
-  }, [targetChar])
+  }, [targetChar, animate])
 
   function scheduleNext() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -34,8 +44,8 @@ function FlapUnit({ targetChar, size = 'logo' }) {
 
   function doFlip() {
     if (currentIndexRef.current === targetIndexRef.current) return
-    const next = (currentIndexRef.current + 1) % CHARS.length
-    const nextC = CHARS[next]
+    const next = (currentIndexRef.current + 1) % charSet.length
+    const nextC = charSet[next]
     setNextChar(nextC)
     setFlipping(true)
     timeoutRef.current = setTimeout(() => {
@@ -121,23 +131,18 @@ function FlapUnit({ targetChar, size = 'logo' }) {
           100% { transform: rotateX(-180deg); background: #1e1e1c; opacity: 0; }
         }
       `}</style>
-
       <div style={{ ...half, top: 0, borderRadius: '2px 2px 0 0', borderBottom: 'none' }}>
         {charEl(currentChar, 'top')}
       </div>
-
       <div style={{ ...half, bottom: 0, borderRadius: '0 0 2px 2px', borderTop: 'none' }}>
         {charEl(nextChar, 'bottom')}
       </div>
-
       <div style={{ ...half, bottom: 0, borderRadius: '0 0 2px 2px', borderTop: 'none', zIndex: 2 }}>
         {charEl(currentChar, 'bottom')}
       </div>
-
       <div style={flapStyle}>
         {charEl(currentChar, 'top')}
       </div>
-
       <div style={dividerStyle} />
     </div>
   )
@@ -176,12 +181,18 @@ export function LogoFlap({ words = ['ODDLOT'] }) {
   )
 }
 
-export function PriceFlap({ value }) {
+export function PriceFlap({ value, animate = true }) {
   const chars = ('$' + value.toFixed(2)).split('')
   return (
     <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
       {chars.map((c, i) => (
-        <FlapUnit key={i} targetChar={c} size="price" />
+        <FlapUnit
+          key={i}
+          targetChar={c}
+          size="price"
+          charSet={c === '$' ? ['$'] : PRICE_CHARS.split('')}
+          animate={animate}
+        />
       ))}
     </div>
   )

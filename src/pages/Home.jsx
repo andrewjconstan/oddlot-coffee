@@ -67,7 +67,7 @@ export default function Home() {
         <button style={tabStyle('history')} onClick={() => setActiveTab('history')}>History</button>
       </nav>
 
-      <main style={{ padding: '2rem', maxWidth: '640px', margin: '0 auto' }}>
+      <main style={{ padding: '2rem', maxWidth: '768px', margin: '0 auto', width: '100%' }}>
         {loading ? (
           <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '12px', letterSpacing: '0.2em', textAlign: 'center', paddingTop: '4rem' }}>loading lots...</div>
         ) : (
